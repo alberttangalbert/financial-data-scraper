@@ -1,4 +1,4 @@
-# Financal Data Scraper
+# Financal Data Scraper [![Run Tests](https://github.com/alberttangalbert/financial-data-scraper/actions/workflows/run-tests.yml/badge.svg)](https://github.com/alberttangalbert/financial-data-scraper/actions/workflows/run-tests.yml)
 
 ## Description
 This tool uses Retrieval-Augmented Generation (RAG) to extract and process financial data from uploaded PDF documents. It currently supports the automated generation of income statements and, in the future, will include balance sheets, cash flow statements, and statements of stockholders’ equity. Users can upload PDFs, and the system extracts, aggregates, and organizes financial metrics into clear, structured formats. The platform integrates advanced AI and Azure services to deliver accurate and professional results efficiently.
