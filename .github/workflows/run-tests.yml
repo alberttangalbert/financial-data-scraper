@@ -27,7 +27,22 @@ jobs:
         pip install -r requirements.txt
 
     - name: Set environment variables
-      run: echo "AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" >> $GITHUB_ENV
+      run: |
+        echo "AZURE_DOC_INTEL_API_KEY=${{ secrets.AZURE_DOC_INTEL_API_KEY }}" >> $GITHUB_ENV
+        echo "AZURE_DOC_INTEL_ENDPOINT=${{ secrets.AZURE_DOC_INTEL_ENDPOINT }}" >> $GITHUB_ENV
+        echo "AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}" >> $GITHUB_ENV
+        echo "AZURE_OPENAI_API_VERSION=${{ secrets.AZURE_OPENAI_API_VERSION }}" >> $GITHUB_ENV
+        echo "AZURE_OPENAI_DEPLOYMENT_ID=${{ secrets.AZURE_OPENAI_DEPLOYMENT_ID }}" >> $GITHUB_ENV
+        echo "AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }}" >> $GITHUB_ENV
+        echo "AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" >> $GITHUB_ENV
 
     - name: Run tests
+      env:
+        AZURE_DOC_INTEL_API_KEY: ${{ secrets.AZURE_DOC_INTEL_API_KEY }}
+        AZURE_DOC_INTEL_ENDPOINT: ${{ secrets.AZURE_DOC_INTEL_ENDPOINT }}
+        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+        AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+        AZURE_OPENAI_DEPLOYMENT_ID: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_ID }}
+        AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+        AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
       run: python -m unittest discover tests

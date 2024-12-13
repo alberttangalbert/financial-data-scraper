@@ -149,7 +149,8 @@ from typing import List, Optional
 def extract_fiscal_year_end(
     text: List[str], 
     openai_service: AzureOpenAIService,
-    top_n: int = 5
+    top_n: int = 5,
+    max_context_lengths: List[int] = [1000, 2000]
 ) -> Optional[str]:
     """
     Extract the fiscal year end date using a Retrieval-Augmented Generation (RAG) approach.
@@ -162,6 +163,42 @@ def extract_fiscal_year_end(
     Returns:
         Optional[str]: Extracted fiscal year end date or None if not found
     """
+
+    # Prepare system prompt for extracting fiscal year end
+    system_prompt = (
+        "You are an expert document analyzer. Your task is to precisely extract "
+        "the fiscal year end date from the given context. "
+        "Please follow these guidelines:\n"
+        "1. Look for phrases like 'Fiscal Year Ended', 'Year End', 'As of'\n"
+        "2. Provide ONLY the exact date in the format 'Month Day, Year'\n"
+        "3. If no clear fiscal year end date is found, respond with 'Not Found'\n"
+        "4. Use ONLY the information from the provided context"
+    )
+
+    # Attempt extraction with progressive context expansion
+    for max_length in max_context_lengths:
+        # Concatenate text segments up to max_length
+        full_context = ""
+        for segment in text:
+            if len(full_context) + len(segment) <= max_length:
+                full_context += segment + "\n\n"
+            else:
+                break
+        
+        # Skip if context is empty
+        if not full_context.strip():
+            continue
+        
+        # Query the chatbot
+        response = openai_service.query(
+            system_prompt=system_prompt, 
+            user_prompt=full_context
+        )
+        
+        # Check if a meaningful response was found
+        if response.strip().lower() not in ['not found', '']:
+            return response.strip()
+        
     # Create TF-IDF vectorizer
     vectorizer = TfidfVectorizer(stop_words='english')
     
@@ -200,6 +237,7 @@ def extract_fiscal_year_end(
     
     try:
         response = openai_service.query(system_prompt=system_prompt, user_prompt=user_prompt)
+        print(response)
         result = response.strip()
         return result if result.lower() != 'not found' else None
     except Exception as e:
@@ -348,13 +386,14 @@ def aggregate_income_statements(results: Dict[str, Tuple[List[pd.DataFrame], Lis
         """Converts a DataFrame to a simple text representation (e.g., CSV)."""
         return df.to_csv(index=False)
 
-    # Adjusted system prompt to rely on the model's professional judgment instead of a similarity threshold
+    # Adjusted system prompt to rely on the model's professional judgment
     system_prompt = (
         "You are a financial assistant acting as a professional accountant. You are given data from multiple "
         "fiscal years' income statements.\n"
         "Aggregate them into a single clean table, following these rules:\n\n"
         "Formatting:\n"
-        "- The table should have a header row with fiscal years as column headers (e.g., 'FY 2023', 'FY 2024').\n"
+        "- The table should have a header row with the exact fiscal year ended dates as column headers "
+        "(e.g., 'January 31, 2023', 'February 1, 2024').\n"
         "- The first column header (row 1, col 0) should be blank.\n"
         "- Preserve the original order of rows from the first year processed for all identical or equivalent line items.\n"
         "- If new line items appear in subsequent years, place them in the most logically appropriate category "
@@ -399,6 +438,8 @@ def aggregate_income_statements(results: Dict[str, Tuple[List[pd.DataFrame], Lis
 
     user_prompt += (
         "Please aggregate all the years' data into a single table following the rules above.\n"
+        "Use the exact fiscal year-end dates provided (e.g., 'January 31, 2023', 'February 1, 2024') "
+        "as the column headers in the output table.\n"
         "Remember to merge line items representing the same concept, using your best judgment as a professional accountant.\n"
     )
 
