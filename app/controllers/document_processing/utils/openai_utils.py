@@ -402,6 +402,10 @@ def aggregate_income_statements(results: Dict[str, Tuple[List[pd.DataFrame], Lis
         "Remember to merge line items representing the same concept, using your best judgment as a professional accountant.\n"
     )
 
+    import json
+    json.dump(user_prompt, open("user_prompt.json", "w"))
+    json.dump(system_prompt, open("system_prompt.json", "w"))
+
     openai_service = AzureOpenAIService()
     response = openai_service.query(system_prompt=system_prompt, user_prompt=user_prompt)
     return response

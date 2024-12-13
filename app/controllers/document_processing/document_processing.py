@@ -1,5 +1,4 @@
 import os
-os.chdir("/Users/atang/Documents/bpc-spg/financial-scraper-server")
 from typing import List
 from app.controllers.document_processing.utils import doc_intel_utils, general_utils, openai_utils, cog_search_utils
 from app.services.azure_services.openai_service import AzureOpenAIService
