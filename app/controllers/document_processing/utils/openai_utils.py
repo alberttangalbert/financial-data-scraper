@@ -48,6 +48,7 @@ def process_chatbot_response(response: str) -> Tuple[str, str]:
         "balance sheet": "Balance Sheet",
         "stockholders equity statement": "Stockholder's Equity Statement",
         "stockholder's equity statement": "Stockholder's Equity Statement",
+        "stockholders' equity statement": "Stockholder's Equity Statement",
         "cash flow statement": "Cash Flow Statement",
         "none": "None"
     }

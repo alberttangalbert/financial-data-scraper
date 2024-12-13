@@ -5,7 +5,19 @@ import re
 from app.services.azure_services.openai_service import AzureOpenAIService
 from app.controllers.document_processing.utils.openai_utils import retry_with_exponential_backoff
 
-@retry_with_exponential_backoff()
+def run_step_with_retries(step_func, max_attempts=3):
+    """
+    Runs a step (a group of function calls) up to a maximum number of attempts.
+    If any function in the step fails, the entire step is retried from the beginning.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return step_func()
+        except Exception as e:
+            if attempt == max_attempts:
+                raise e  # Re-raise the last exception after max attempts
+            print(f"Attempt {attempt} failed for step {step_func.__name__}. Retrying...")
+
 def generate_income_statement(
     income_statement_dfs: List[pd.DataFrame],
     unit_scale: str,
@@ -14,62 +26,58 @@ def generate_income_statement(
     """
     Generates the income statement by calculating key financial metrics (Total Revenue, Gross Profit,
     Operating Income, Pre-Tax Income, Net Income) and returning associated DataFrames and values.
+    
+    If any functions within a step fail, that entire step is retried up to 3 times starting from
+    the first function of that step.
     """
-    # Step 1: Get Revenue Breakdown
-    revenue_breakdown_response = get_revenue_breakdown(
-        income_statement_dfs,
-        unit_scale,
-        year_ended
-    )
-    revenue_df = parse_revenue_table(revenue_breakdown_response)
-    total_revenue = extract_total_revenue(revenue_df)
 
-    # Step 2: Calculate Gross Profit
-    gross_profit_response = get_gross_profit(
-        total_revenue,
-        income_statement_dfs,
-        unit_scale,
-        year_ended
-    )
-    gross_profit_df = parse_gross_profit_table(gross_profit_response)
-    gross_profit = calculate_gross_profit(gross_profit_df)
+    def step_1():
+        # Step 1: Get Revenue Breakdown and Total Revenue
+        revenue_breakdown_response = get_revenue_breakdown(income_statement_dfs, unit_scale, year_ended)
+        revenue_df = parse_revenue_table(revenue_breakdown_response)
+        total_revenue = extract_total_revenue(revenue_df)
+        return revenue_df, total_revenue
 
-    # Step 3: Calculate Operating Income
-    operating_income_response = get_operating_income(
-        gross_profit,
-        income_statement_dfs,
-        unit_scale,
-        year_ended
-    )
-    operating_income_df = parse_operating_income_table(operating_income_response)
-    operating_income = calculate_operating_income(operating_income_df)
+    def step_2(total_revenue):
+        # Step 2: Calculate Gross Profit
+        gross_profit_response = get_gross_profit(total_revenue, income_statement_dfs, unit_scale, year_ended)
+        gross_profit_df = parse_gross_profit_table(gross_profit_response)
+        gross_profit = calculate_gross_profit(gross_profit_df)
+        return gross_profit_df, gross_profit
 
-    # Step 4: Calculate Pre-Tax Income
-    pre_tax_income_response = get_pre_tax_income(
-        operating_income,
-        income_statement_dfs,
-        unit_scale,
-        year_ended
-    )
-    pre_tax_income_df = parse_pre_tax_income_table(pre_tax_income_response)
-    pre_tax_income = calculate_pre_tax_income(pre_tax_income_df)
+    def step_3(gross_profit):
+        # Step 3: Calculate Operating Income
+        operating_income_response = get_operating_income(gross_profit, income_statement_dfs, unit_scale, year_ended)
+        operating_income_df = parse_operating_income_table(operating_income_response)
+        operating_income = calculate_operating_income(operating_income_df)
+        return operating_income_df, operating_income
 
-    # Step 5: Calculate Net Income
-    net_income_response = get_net_income(
-        pre_tax_income,
-        income_statement_dfs,
-        unit_scale,
-        year_ended
-    )
-    net_income_df = parse_net_income_table(net_income_response)
-    net_income = calculate_net_income(net_income_df)
+    def step_4(operating_income):
+        # Step 4: Calculate Pre-Tax Income
+        pre_tax_income_response = get_pre_tax_income(operating_income, income_statement_dfs, unit_scale, year_ended)
+        pre_tax_income_df = parse_pre_tax_income_table(pre_tax_income_response)
+        pre_tax_income = calculate_pre_tax_income(pre_tax_income_df)
+        return pre_tax_income_df, pre_tax_income
+
+    def step_5(pre_tax_income):
+        # Step 5: Calculate Net Income
+        net_income_response = get_net_income(pre_tax_income, income_statement_dfs, unit_scale, year_ended)
+        net_income_df = parse_net_income_table(net_income_response)
+        net_income = calculate_net_income(net_income_df)
+        return net_income_df, net_income
+
+    # Run each step with retries
+    revenue_df, total_revenue = run_step_with_retries(step_1)
+    gross_profit_df, gross_profit = run_step_with_retries(lambda: step_2(total_revenue))
+    operating_income_df, operating_income = run_step_with_retries(lambda: step_3(gross_profit))
+    pre_tax_income_df, pre_tax_income = run_step_with_retries(lambda: step_4(operating_income))
+    net_income_df, net_income = run_step_with_retries(lambda: step_5(pre_tax_income))
 
     # Return all DataFrames and calculated amounts as lists
     dataframes = [revenue_df, gross_profit_df, operating_income_df, pre_tax_income_df, net_income_df]
     amounts = [total_revenue, gross_profit, operating_income, pre_tax_income, net_income]
 
     return dataframes, amounts
-
 
 def get_revenue_breakdown(
     income_statement_dfs: List[str],
