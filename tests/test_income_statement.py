@@ -1,5 +1,4 @@
 import unittest
-from unittest.mock import patch, MagicMock
 import pandas as pd
 from app.core.fs_generators.income_statement_gen import (
     parse_revenue_table, extract_total_revenue,
@@ -10,7 +9,6 @@ from app.core.fs_generators.income_statement_gen import (
 )
 
 class TestIncomeStatementFunctions(unittest.TestCase):
-    @patch("app.routes.blob_storage_routes.AzureBlobStorageService")
     def setUp(self):
         # Mocked responses for testing
         self.mock_revenue_response = (
